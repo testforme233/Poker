@@ -1,4 +1,4 @@
-import EggGameManager from '@/components/egg-game'
+import EggGameManager from '@/components/egg_game'
 
 export default function Home() {
   return (

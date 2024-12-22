@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import './globals.css'
+import './output.css'
 
 export const metadata: Metadata = {
-  title: '年会惯蛋比赛管理系统',
+  title: '积优惯蛋比赛管理系统',
   description: '管理年会惯蛋比赛的队伍、座位和积分',
 }
 

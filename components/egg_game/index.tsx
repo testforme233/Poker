@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 
@@ -27,7 +27,7 @@ const EggGameManager = () => {
   return (
     <Card className="container mx-auto p-4">
       <CardHeader>
-        <CardTitle className="text-2xl">年会惯蛋比赛管理系统</CardTitle>
+        <CardTitle className="text-2xl">积优惯蛋比赛管理系统</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="teams" className="w-full">
@@ -70,7 +70,16 @@ const EggGameManager = () => {
   );
 };
 
-const TeamManagement = ({ teams, setTeams }) => {
+const TeamManagement = ({teams, setTeams}) => {
+  useEffect(() => {
+    const savedTeams = typeof window !== 'undefined' 
+      ? localStorage.getItem('teams')
+      : null;
+    
+    if (savedTeams) {
+      setTeams(JSON.parse(savedTeams));
+    }
+  }, []);
   const [teamName, setTeamName] = useState('');
   const [player1, setPlayer1] = useState('');
   const [player2, setPlayer2] = useState('');
@@ -87,6 +96,14 @@ const TeamManagement = ({ teams, setTeams }) => {
       setPlayer2('');
     }
   };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('teams', JSON.stringify(teams));
+    } catch (error) {
+      console.error('保存队伍数据失败:', error);
+    }
+  }, [teams]);
 
   const removeTeam = (id) => {
     setTeams(teams.filter(team => team.id !== id));
@@ -157,16 +174,31 @@ const TeamManagement = ({ teams, setTeams }) => {
 
 const SeatingArrangement = ({ teams, seating, setSeating }) => {
   const [showSettings, setShowSettings] = useState(false);
-  const [rows, setRows] = useState(() => seating.tables.length > 0 
-    ? Math.ceil(Math.sqrt(seating.tables.length)) 
-    : 3
-  );
-  const [cols, setCols] = useState(() => seating.tables.length > 0
-    ? Math.ceil(seating.tables.length / Math.ceil(Math.sqrt(seating.tables.length)))
-    : 3
-  );
+  // 从localStorage读取配置或使用默认值
+  const [rows, setRows] = useState(() => {
+    const savedRows = localStorage.getItem('tableRows');
+    if (savedRows) return parseInt(savedRows);
+    return seating.tables.length > 0 
+      ? Math.ceil(Math.sqrt(seating.tables.length)) 
+      : 3;
+  });
+
+  const [cols, setCols] = useState(() => {
+    const savedCols = localStorage.getItem('tableCols');
+    if (savedCols) return parseInt(savedCols);
+    return seating.tables.length > 0
+      ? Math.ceil(seating.tables.length / Math.ceil(Math.sqrt(seating.tables.length)))
+      : 3;
+  });
+
   const [draggedTeam, setDraggedTeam] = useState(null);
   const [draggedPosition, setDraggedPosition] = useState(null);
+
+  // 保存配置到localStorage
+  useEffect(() => {
+    localStorage.setItem('tableRows', rows.toString());
+    localStorage.setItem('tableCols', cols.toString());
+  }, [rows, cols]);
 
   const generateTables = () => {
     const newTables = Array(rows * cols).fill(null).map(() => ({
@@ -300,64 +332,82 @@ const SeatingArrangement = ({ teams, seating, setSeating }) => {
           {seating.tables.map((table, index) => (
             <Card key={index} className="relative">
               <CardContent className="p-4">
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">
-                  {index + 1}
+                {/* 桌号居中 */}
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">
+                  桌号{index + 1}
                 </div>
                 
+                {/* 东西方位容器 */}
                 <div 
-                  className="border-b p-2 mb-2"
+                  className="border-b p-4 mb-2 min-h-[120px] items-center justify-center relative"
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, index, 'eastWest')}
                 >
                   {table.eastWest ? (
-                    <div className="relative">
-                      <div 
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, table.eastWest, 'eastWest')}
-                        className="cursor-move"
-                      >
-                        <div className="font-bold">东西方位</div>
-                        <div>{table.eastWest.name}</div>
-                        <div className="text-sm">{table.eastWest.players.join(', ')}</div>
-                      </div>
+                    <Card><div className="w-full items-center justify-center">
+                    <div 
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, table.eastWest, 'eastWest')}
+                      className="cursor-move bg-white shadow-md rounded-lg p-4 relative"
+                    >
                       <button
                         onClick={() => handleRemoveFromTable(index, 'eastWest')}
-                        className="absolute top-0 right-0 text-red-500"
+                        className="absolute top-0 right-0 text-red-400 hover:text-red-500 text-lg"
                       >
                         ×
                       </button>
+                      <div className="text-center mb-3 right-1/2 transform translate-x-1/2">
+                        <div className="font-bold text-lg flex items-center justify-center">{table.eastWest.name}</div>
+                      </div>
+                      <div className="text-sm text-gray-600 text-center ">
+                        {table.eastWest.players.map((player, idx) => (
+                          <div key={idx} className="py-1 flex items-center justify-center">{player}</div>
+                        ))}
+                      </div>
                     </div>
+                  </div>
+                  </Card>
+                    
                   ) : (
-                    <div className="text-gray-400">东西方位（空）</div>
+                    <div className="text-gray-400 flex items-center justify-center">东西方位（空）</div>
                   )}
                 </div>
                 
-                <div
+                {/* 南北方位容器 */}
+                <div 
+                  className="border-b p-4 mb-2 min-h-[120px] items-center justify-center relative"
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, index, 'northSouth')}
                 >
                   {table.northSouth ? (
-                    <div className="relative">
-                      <div 
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, table.northSouth, 'northSouth')}
-                        className="cursor-move"
-                      >
-                        <div className="font-bold">南北方位</div>
-                        <div>{table.northSouth.name}</div>
-                        <div className="text-sm">{table.northSouth.players.join(', ')}</div>
-                      </div>
+                    <Card><div className="w-full items-center justify-center">
+                    <div 
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, table.northSouth, 'northSouth')}
+                      className="cursor-move bg-white shadow-md rounded-lg p-4 relative"
+                    >
                       <button
                         onClick={() => handleRemoveFromTable(index, 'northSouth')}
-                        className="absolute top-0 right-0 text-red-500"
+                        className="absolute top-0 right-0 text-red-400 hover:text-red-500 text-lg"
                       >
                         ×
                       </button>
+                      <div className="text-center mb-3 right-1/2 transform translate-x-1/2">
+                        <div className="font-bold text-lg flex items-center justify-center">{table.northSouth.name}</div>
+                      </div>
+                      <div className="text-sm text-gray-600 text-center ">
+                        {table.northSouth.players.map((player, idx) => (
+                          <div key={idx} className="py-1 flex items-center justify-center">{player}</div>
+                        ))}
+                      </div>
                     </div>
+                  </div>
+                  </Card>
+                    
                   ) : (
-                    <div className="text-gray-400">南北方位（空）</div>
+                    <div className="text-gray-400 flex items-center justify-center">南北方位（空）</div>
                   )}
-                </div>
+                </div>        
               </CardContent>
             </Card>
           ))}
